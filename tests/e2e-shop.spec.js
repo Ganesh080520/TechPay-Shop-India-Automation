@@ -1,12 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
-const { HomePage } = require('../pages/Homepage');
-const { FilterPage } = require('../pages/Filterpage');
-const { ProductPage } = require('../pages/Productpage');
-const { CartPage } = require('../pages/Cartpage');
-const { LoginPage } = require('../pages/Loginpage');
-const { CheckoutPage } = require('../pages/Checkoutpage');
-const { productCatalog, normalizeCategory, getProductConfiguration} = require('../pages/ProductCatalogpage');
+const { HomePage } = require('../pages/HomePage');
+const { FilterPage } = require('../pages/FilterPage');
+const { ProductPage } = require('../pages/ProductPage');
+const { CartPage } = require('../pages/CartPage');
+const { LoginPage } = require('../pages/LoginPage');
+const { CheckoutPage } = require('../pages/CheckoutPage');
+const { productCatalog, normalizeCategory, getProductConfiguration} = require('../pages/ProductCatalogPage');
 
 
 test.use({

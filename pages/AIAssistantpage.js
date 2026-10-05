@@ -60,7 +60,10 @@ class AIAssistantPage extends BasePage {
     console.log('AI IFRAME TEXT:');
     console.log(bodyText);
 
-    await this.page.screenshot({path: 'debug-ai-state.png', fullPage: true});
+    await this.page.screenshot({
+    path: `test-results/debug-ai-state-${Date.now()}.png`,
+    fullPage: true
+});
 
     console.log('Screenshot saved as debug-ai-state.png');
 
