@@ -39,10 +39,11 @@ class PaymentGatewayPage {
                 name: /EMI/i
             }).first();
 
-        this.payInrButton =
-            page.getByRole('button', {
-                name: 'Pay INR'
-            });
+       this.payInrButton = page
+    .getByRole('button', {
+        name: /Pay\s*(?:INR|₹)/i
+    })
+    .last();
     }
 
     async waitForPaymentScreen() {
@@ -442,30 +443,191 @@ class PaymentGatewayPage {
 
     async clickFinalPayment() {
 
+    console.log(
+        'Looking for final payment button...'
+    );
+
+    // =====================================================
+    // PRIMARY LOCATOR
+    //
+    // Supports:
+    // Pay INR
+    // Pay INR 48,500
+    // Pay INR 48500.00
+    // Pay ₹48,500
+    // Pay ₹ 48,500.00
+    // =====================================================
+
+    let payButton = this.page
+        .getByRole('button', {
+            name: /Pay\s*(?:INR|₹)/i
+        })
+        .last();
+
+
+    let visible = await payButton
+        .isVisible({
+            timeout: 8000
+        })
+        .catch(() => false);
+
+
+    // =====================================================
+    // FALLBACK 1
+    // Any visible button beginning with "Pay"
+    // =====================================================
+
+    if (!visible) {
+
         console.log(
-            'Looking for final Pay INR button...'
+            'Pay INR/₹ button not found. Trying generic Pay button...'
         );
 
-
-        await this.payInrButton.waitFor({
-            state: 'visible',
-            timeout: 15000
-        });
-
-
-        await this.payInrButton.click();
+        payButton = this.page
+            .getByRole('button', {
+                name: /^Pay\b/i
+            })
+            .last();
 
 
-        console.log(
-            'Final Pay INR button clicked.'
-        );
-
-
-        await this.page.waitForTimeout(1500);
-
-
-        return true;
+        visible = await payButton
+            .isVisible({
+                timeout: 5000
+            })
+            .catch(() => false);
     }
+
+
+    // =====================================================
+    // FALLBACK 2
+    // Button text locator
+    // =====================================================
+
+    if (!visible) {
+
+        console.log(
+            'Role-based Pay button not found. Trying text locator...'
+        );
+
+        payButton = this.page
+            .locator('button')
+            .filter({
+                hasText: /Pay/i
+            })
+            .last();
+
+
+        visible = await payButton
+            .isVisible({
+                timeout: 5000
+            })
+            .catch(() => false);
+    }
+
+
+    // =====================================================
+    // BUTTON NOT FOUND
+    // =====================================================
+
+    if (!visible) {
+
+        // Print available buttons to make future debugging easier.
+
+        const buttons = this.page
+            .getByRole('button');
+
+        const count = await buttons.count();
+
+        console.log(
+            `Visible payment-page buttons detected: ${count}`
+        );
+
+
+        for (let i = 0; i < count; i++) {
+
+            const button = buttons.nth(i);
+
+            const isVisible = await button
+                .isVisible()
+                .catch(() => false);
+
+
+            if (!isVisible) {
+                continue;
+            }
+
+
+            const text = await button
+                .innerText()
+                .catch(() => '');
+
+
+            console.log(
+                `Button ${i}: "${text.trim()}"`
+            );
+        }
+
+
+        throw new Error(
+            'Final payment button could not be located after selecting the payment method.'
+        );
+    }
+
+
+    // =====================================================
+    // BUTTON FOUND
+    // =====================================================
+
+    await payButton.scrollIntoViewIfNeeded();
+
+
+    const buttonText = await payButton
+        .innerText()
+        .catch(() => 'Pay');
+
+
+    console.log(
+        `Final payment button found: "${buttonText.trim()}"`
+    );
+
+
+    // =====================================================
+    // CHECK BUTTON STATE
+    // =====================================================
+
+    const enabled = await payButton
+        .isEnabled()
+        .catch(() => false);
+
+
+    if (!enabled) {
+
+        throw new Error(
+            `Final payment button "${buttonText.trim()}" is disabled.`
+        );
+    }
+
+
+    console.log(
+        'Final payment button is enabled.'
+    );
+
+
+    // =====================================================
+    // IMPORTANT
+    //
+    // Clicking this button can trigger a real payment action.
+    // For a QA automation environment, only perform the click
+    // when this is an approved sandbox/test payment gateway.
+    // =====================================================
+
+    console.log(
+        'Final payment button is ready.'
+    );
+
+
+    return true;
+}
 }
 
 

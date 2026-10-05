@@ -139,243 +139,329 @@ class CheckoutPage extends BasePage {
     // APPLY DISCOUNT AND VERIFY TOTAL
     // ==========================================
 
-    async applyDiscountAndVerify(discountAmount) {
+   async applyDiscountAndVerify(discountAmount) {
 
-        console.log(
-            '========================================'
-        );
+    console.log(
+        '========================================'
+    );
 
-        console.log(
-            'CHECKING DISCOUNT'
-        );
+    console.log(
+        'CHECKING DISCOUNT'
+    );
 
-        console.log(
-            '========================================'
-        );
+    console.log(
+        '========================================'
+    );
 
-        // ==========================================
-        // DISCOUNT FIELD
-        // ==========================================
 
-        const discountField = this.page.locator(
-            'input[inputmode="decimal"]'
-        ).first();
+    // =====================================================
+    // LOCATE DISCOUNT FIELD
+    // =====================================================
 
-        const discountAvailable = await discountField
+    const discountInput = this.page
+        .locator(
+            'input[placeholder*="discount" i], ' +
+            'input[placeholder*="amount" i]'
+        )
+        .first();
+
+
+    const discountAvailable =
+        await discountInput
             .isVisible({
-                timeout: 3000
+                timeout: 5000
             })
             .catch(() => false);
 
-        if (!discountAvailable) {
 
-            console.log(
-                'Discount field not available. Skipping discount.'
-            );
-
-            return false;
-        }
+    if (!discountAvailable) {
 
         console.log(
-            'Discount field available.'
+            'Discount field is not available.'
         );
 
-        // ==========================================
-        // GET ORIGINAL TOTAL
-        // ==========================================
-
-        const totalAmount = this.page
-            .getByText('Total', {
-                exact: true
-            })
-            .locator('..')
-            .locator('p')
-            .filter({
-                hasText: /INR\s*[\d,]+(?:\.\d{2})?/
-            });
-
-        await totalAmount.waitFor({
-            state: 'visible',
-            timeout: 5000
-        });
-
-        const originalText =
-            await totalAmount.innerText();
-
-        console.log(
-            `Original total: ${originalText}`
-        );
-
-        // ==========================================
-        // EXTRACT ORIGINAL VALUE
-        // ==========================================
-
-        const originalValue =
-            parseFloat(
-                originalText.replace(
-                    /[^\d.]/g,
-                    ''
-                )
-            );
-
-        console.log(
-            `Original total value: ₹${originalValue}`
-        );
-
-        // ==========================================
-        // CALCULATE EXPECTED TOTAL
-        // ==========================================
-
-        const expectedValue =
-            originalValue -
-            Number(discountAmount);
-
-        console.log(
-            `Entering discount amount: ₹${discountAmount}`
-        );
-
-        console.log(
-            `Expected total after discount: ₹${expectedValue}`
-        );
-
-        // ==========================================
-        // ENTER DISCOUNT
-        // ==========================================
-
-        await discountField.click();
-
-        await discountField.fill(
-            String(discountAmount)
-        );
-
-        // ==========================================
-        // TRIGGER CHANGE / BLUR
-        // ==========================================
-
-        await discountField.press('Tab');
-
-        // ==========================================
-        // WAIT FOR TOTAL TO UPDATE
-        // ==========================================
-
-        console.log(
-            'Waiting for total to recalculate...'
-        );
-
-        try {
-
-            await expect.poll(
-                async () => {
-
-                    const text =
-                        await totalAmount.innerText();
-
-                    const value =
-                        parseFloat(
-                            text.replace(
-                                /[^\d.]/g,
-                                ''
-                            )
-                        );
-
-                    console.log(
-                        `Current total during verification: ₹${value}`
-                    );
-
-                    return value;
-
-                },
-                {
-                    timeout: 10000,
-                    intervals: [
-                        500,
-                        1000,
-                        1500
-                    ],
-                    message:
-                        'Total did not update after applying discount'
-                }
-            ).toBe(expectedValue);
-
-        } catch (error) {
-
-            const finalText =
-                await totalAmount.innerText();
-
-            const finalValue =
-                parseFloat(
-                    finalText.replace(
-                        /[^\d.]/g,
-                        ''
-                    )
-                );
-
-            console.log(
-                `Actual total after discount: ₹${finalValue}`
-            );
-
-            console.log(
-                `Expected total after discount: ₹${expectedValue}`
-            );
-
-            throw error;
-        }
-
-        // ==========================================
-        // FINAL VERIFICATION
-        // ==========================================
-
-        const updatedText =
-            await totalAmount.innerText();
-
-        const updatedValue =
-            parseFloat(
-                updatedText.replace(
-                    /[^\d.]/g,
-                    ''
-                )
-            );
-
-        console.log(
-            `Updated total: ${updatedText}`
-        );
-
-        console.log(
-            `Actual total after discount: ₹${updatedValue}`
-        );
-
-        console.log(
-            `Expected total after discount: ₹${expectedValue}`
-        );
-
-        // ==========================================
-        // FINAL ASSERTION
-        // ==========================================
-
-        expect(
-            updatedValue,
-            'Total amount should be reduced after applying discount'
-        ).toBe(expectedValue);
-
-        console.log(
-            'Discount applied successfully.'
-        );
-
-        console.log(
-            `Original total: ₹${originalValue}`
-        );
-
-        console.log(
-            `Discount amount: ₹${discountAmount}`
-        );
-
-        console.log(
-            `Final total: ₹${updatedValue}`
-        );
-
-        return true;
+        return false;
     }
 
+
+    console.log(
+        'Discount field available.'
+    );
+
+
+    // =====================================================
+    // LOCATE TOTAL SECTION
+    // =====================================================
+
+    const totalLabel = this.page
+        .getByText(
+            'Total',
+            {
+                exact: true
+            }
+        )
+        .last();
+
+
+    await totalLabel.waitFor({
+
+        state: 'visible',
+
+        timeout: 10000
+    });
+
+
+    // =====================================================
+    // GET TOTAL CONTAINER
+    // =====================================================
+
+    const totalContainer =
+        totalLabel.locator('..');
+
+
+    // =====================================================
+    // FIND ₹ / INR AMOUNT
+    //
+    // Supports:
+    // ₹ 48,500.00
+    // ₹48,500
+    // INR 48,500.00
+    // INR48,500
+    // =====================================================
+
+    const totalAmount = totalContainer
+        .getByText(
+            /(?:₹|INR)\s*[\d,]+(?:\.\d{1,2})?/i
+        )
+        .last();
+
+
+    await totalAmount.waitFor({
+
+        state: 'visible',
+
+        timeout: 10000
+    });
+
+
+    // =====================================================
+    // READ ORIGINAL TOTAL
+    // =====================================================
+
+    const originalTotalText =
+        await totalAmount.innerText();
+
+
+    console.log(
+        `Original total text: ${originalTotalText}`
+    );
+
+
+    const originalTotal =
+        this.extractAmount(
+            originalTotalText
+        );
+
+
+    console.log(
+        `Original Total: ₹${originalTotal}`
+    );
+
+
+    // =====================================================
+    // ENTER DISCOUNT
+    // =====================================================
+
+    console.log(
+        `Entering discount amount: ₹${discountAmount}`
+    );
+
+
+    await discountInput.fill(
+        String(discountAmount)
+    );
+
+
+    // =====================================================
+    // LOCATE APPLY BUTTON
+    // =====================================================
+
+    const applyButton = this.page
+        .getByRole(
+            'button',
+            {
+                name: /^Apply$/i
+            }
+        )
+        .first();
+
+
+    await applyButton.waitFor({
+
+        state: 'visible',
+
+        timeout: 10000
+    });
+
+
+    console.log(
+        'Clicking Apply...'
+    );
+
+
+    await applyButton.click();
+
+
+    // =====================================================
+    // CALCULATE EXPECTED TOTAL
+    // =====================================================
+
+    const expectedTotal =
+        originalTotal - discountAmount;
+
+
+    console.log(
+        `Expected Total After Discount: ₹${expectedTotal}`
+    );
+
+
+    // =====================================================
+    // WAIT FOR TOTAL TO UPDATE
+    //
+    // Re-read DOM every time because React may re-render
+    // the checkout total after applying discount.
+    // =====================================================
+
+    await expect.poll(
+
+        async () => {
+
+            const refreshedTotalLabel =
+                this.page
+                    .getByText(
+                        'Total',
+                        {
+                            exact: true
+                        }
+                    )
+                    .last();
+
+
+            const refreshedContainer =
+                refreshedTotalLabel
+                    .locator('..');
+
+
+            const refreshedAmount =
+                refreshedContainer
+                    .getByText(
+                        /(?:₹|INR)\s*[\d,]+(?:\.\d{1,2})?/i
+                    )
+                    .last();
+
+
+            const text =
+                await refreshedAmount
+                    .innerText()
+                    .catch(() => '');
+
+
+            if (!text) {
+
+                return null;
+            }
+
+
+            return this.extractAmount(
+                text
+            );
+        },
+
+        {
+            message:
+                'Waiting for checkout total to update after discount',
+
+            timeout: 15000
+        }
+
+    ).toBe(
+        expectedTotal
+    );
+
+
+    // =====================================================
+    // READ FINAL TOTAL
+    // =====================================================
+
+    const finalTotalLabel =
+        this.page
+            .getByText(
+                'Total',
+                {
+                    exact: true
+                }
+            )
+            .last();
+
+
+    const finalTotalContainer =
+        finalTotalLabel
+            .locator('..');
+
+
+    const finalTotalAmount =
+        finalTotalContainer
+            .getByText(
+                /(?:₹|INR)\s*[\d,]+(?:\.\d{1,2})?/i
+            )
+            .last();
+
+
+    const finalTotalText =
+        await finalTotalAmount
+            .innerText();
+
+
+    const finalTotal =
+        this.extractAmount(
+            finalTotalText
+        );
+
+
+    console.log(
+        `Final Total: ₹${finalTotal}`
+    );
+
+
+    // =====================================================
+    // FINAL ASSERTION
+    // =====================================================
+
+    expect(
+        finalTotal,
+        'Checkout total should decrease by the entered discount amount.'
+    ).toBe(
+        expectedTotal
+    );
+
+
+    console.log(
+        'Discount applied successfully.'
+    );
+
+
+    console.log(
+        `₹${originalTotal} - ₹${discountAmount} = ₹${finalTotal}`
+    );
+
+
+    console.log(
+        '========================================'
+    );
+
+
+    return true;
+}
     // ==========================================
     // PAY ONLINE AVAILABILITY
     // ==========================================

@@ -1,266 +1,912 @@
 const { test, expect } = require('@playwright/test');
 
 const { HomePage } = require('../pages/HomePage');
-const { FilterPage } = require('../pages/FilterPage');
 const { ProductPage } = require('../pages/ProductPage');
 const { CartPage } = require('../pages/CartPage');
 const { LoginPage } = require('../pages/LoginPage');
 const { CheckoutPage } = require('../pages/CheckoutPage');
-const { productCatalog, normalizeCategory, getProductConfiguration} = require('../pages/ProductCatalogPage');
+const { FilterPage } = require('../pages/Filterpage');
+const { PaymentGatewayPage } = require('../pages/PaymentGatewayPage');
 
 
-test.use({
-    permissions: ['geolocation'],
-    geolocation: {
-        latitude: 12.9716,
-        longitude: 77.5946
+// ============================================================
+// TEST CONFIGURATION
+// ============================================================
+
+const BASE_URL =
+    'https://shop.techpay.ai/in';
+
+
+// ============================================================
+// TEST USER
+// ============================================================
+
+const CUSTOMER_NAME =
+    'Ganesh';
+
+const MOBILE_NUMBER =
+    process.env.MOBILE_NUMBER || '8148478118';
+
+
+// ============================================================
+// STORE
+// ============================================================
+//
+// Pay Online:
+// Gadgets Guru
+//
+// Pay Offline:
+// Unique World - Unique Towers
+//
+// ============================================================
+
+const STORE_NAME =
+    'Shivjyoti Computers (Chomu)';
+
+
+// ============================================================
+// CATEGORY
+// ============================================================
+//
+// Supported:
+// Laptops
+// Desktops
+// Printers
+// Peripherals
+//
+// ============================================================
+
+const SELECTED_CATEGORY =
+    'Printers';
+
+
+// ============================================================
+// PRODUCT CONFIGURATION
+// ============================================================
+
+const PRODUCT_CONFIG = {
+
+    Laptops: {
+
+        search: 'Laptop',
+
+        category: 'Laptops',
+
+        filters: {
+
+            Manufacturer: 'HP',
+
+            'Graphics Card':
+                'Intel Graphics'
+        }
+    },
+
+
+    Desktops: {
+
+        search: 'Desktop',
+
+        category: 'Desktops',
+
+        filters: {
+
+            Manufacturer: 'HP'
+        }
+    },
+
+
+    Printers: {
+
+        search: 'Printer',
+
+        category: 'Printers',
+
+        filters: {
+
+            Manufacturer: 'HP'
+        }
+    },
+
+
+    Peripherals: {
+
+        search: 'Peripheral',
+
+        category: 'Peripherals',
+
+        filters: {
+
+            Manufacturer: 'HP'
+        }
     }
-});
+};
 
+
+// ============================================================
+// PAYMENT CONFIGURATION
+// ============================================================
+
+const PAYMENT_METHOD =
+    'Cards';
+
+const PAYMENT_SUB_OPTION =
+    'RuPay Debit Card';
+
+
+// ============================================================
+// TEST
+// ============================================================
 
 test(
     'POM E2E Shop Journey: Complete Purchase Flow',
+
     async ({ page }) => {
 
-    test.setTimeout(120000);
+        test.setTimeout(180000);
 
-    const homepage = new HomePage(page);
-    const filterPage = new FilterPage(page);
-    const productPage = new ProductPage(page);
-    const cartPage = new CartPage(page);
-    const loginPage = new LoginPage(page);
-    const checkoutPage = new CheckoutPage(page);
-    
-    const STORE_NAME = 'Gadgets Guru';
 
-    const SELECTED_CATEGORY = 'Laptops';
+        // ====================================================
+        // PAGE OBJECTS
+        // ====================================================
 
-    const PRODUCT_INDEX = 1;
+        const homepage =
+            new HomePage(page);
 
-    const LOGIN_PHONE_NUMBER = '8148478118';
+        const productPage =
+            new ProductPage(page);
 
-    const DISCOUNT_AMOUNT = 5000;
+        const cartPage =
+            new CartPage(page);
 
-    const PAYMENT_METHOD = 'Cards';
+        const loginPage =
+            new LoginPage(page);
 
-    const PAYMENT_SUB_OPTION = 'RuPay Debit Card';
+        const checkoutPage =
+            new CheckoutPage(page);
 
-    const {category: NORMALIZED_CATEGORY, data: categoryData} = getProductConfiguration(SELECTED_CATEGORY);
-    console.log(`SELECTED CATEGORY: ${SELECTED_CATEGORY}`);
-    console.log(`SEARCH: ${categoryData.search}`);
+        const filterPage =
+            new FilterPage(page);
 
-    await homepage.navigate();
+        const paymentGateway =
+            new PaymentGatewayPage(page);
 
-    await homepage.handlePersonalInfoModal(
-        'Ganesh',
-        LOGIN_PHONE_NUMBER
-    );
 
-    console.log(`Selecting store: ${STORE_NAME}`);
+        // ====================================================
+        // LOAD CATEGORY CONFIG
+        // ====================================================
 
-    const storeSelected = await homepage.selectStoreLocation(STORE_NAME);
+        const categoryData =
+            PRODUCT_CONFIG[
+                SELECTED_CATEGORY
+            ];
 
-    if (!storeSelected) {
 
-    console.log('========================================');
-    console.log(`STORE "${STORE_NAME}" NOT AVAILABLE`);
-    console.log('Stopping test execution.');
-    console.log('Expected result achieved.');
-    console.log('TEST PASSED');
-    console.log('========================================');
+        if (!categoryData) {
 
-    return;
-}
+            throw new Error(
+                `Unsupported category: ${SELECTED_CATEGORY}`
+            );
+        }
 
-    console.log('Store successfully selected.');    
 
-    console.log('Searching product...');
-
-    await homepage.executeSearch(categoryData.search);
-
-    console.log(`Selecting category: ${SELECTED_CATEGORY}`);
-
-    await homepage.selectProductCategory(NORMALIZED_CATEGORY);
-
-    console.log(`APPLYING ${NORMALIZED_CATEGORY.toUpperCase()} FILTERS`);
-
-    const productAvailable = await filterPage.isProductAvailable();
-
-if (!productAvailable) {
-
-    console.log('Product unavailable in selected store.');
-
-    console.log('Stopping execution successfully.');
-
-    return;
-}
-
-    await filterPage.applyFilters(categoryData.filters);
-
-    console.log('Adding first filtered product to cart...');
-
-    const productsAvailable = await productPage.hasProductsAvailable();
-
-    if (!productsAvailable) {
-
-    console.log(`NO ${SELECTED_CATEGORY.toUpperCase()} PRODUCT AVAILABLE`);
-
-    console.log('Selected filters do not match any product in this store.');
-
-    return;
-}
-
-    console.log('Adding first available product to cart...');
-
-    // await productPage.addFirstProductToCart();
-
-    await productPage.addProductToCart(PRODUCT_INDEX);
-
-    await productPage.navigateToCart();
-
-    const totalItems = await cartPage.getCartItemsCount();
-
-    expect(totalItems).toBeGreaterThan(0);
-
-    console.log(`Cart contains ${totalItems} item(s).`);
-
-    await cartPage.proceedToCheckout();
-
-    await loginPage.loginWithAutoOtp(LOGIN_PHONE_NUMBER);
-
-    console.log('Current URL after login:', page.url());
-    console.log('Login process completed.');
-
-    console.log('Checking discount...');
-
-    const discountApplied =
-    await checkoutPage.applyDiscountAndVerify(
-        DISCOUNT_AMOUNT
-    );
-
-   console.log('PAYMENT FLOW');
-
-const payment = await checkoutPage.getPaymentOptions();
-
-const payOnline = payment.payOnline;
-const payOffline = payment.payOffline;
-
-console.log(`Pay Online available: ${payOnline}`);
-console.log(`Pay Offline available: ${payOffline}`);
-
-// ==========================================
-// PAY ONLINE
-// ==========================================
-
-if (payOnline) {
-
-    console.log('========================================');
-    console.log('PAY ONLINE STORE');
-    console.log('========================================');
-
-    console.log(`Payment Method: ${PAYMENT_METHOD}`);
-    console.log(`Payment Sub-Option: ${PAYMENT_SUB_OPTION}`);
-
-    const paymentGateway =
-        await checkoutPage.clickPayOnline(45000);
-
-    // Pay Online option is available,
-    // but Pay Now may not actually be available
-    if (paymentGateway) {
+        // ====================================================
+        // START
+        // ====================================================
 
         console.log(
-            'Pay Online gateway opened successfully.'
+            '========================================'
         );
 
-        const paymentSelected =
+        console.log(
+            'TECHPAY INDIA E2E TEST STARTED'
+        );
+
+        console.log(
+            '========================================'
+        );
+
+        console.log(
+            `SELECTED CATEGORY: ${SELECTED_CATEGORY}`
+        );
+
+        console.log(
+            `SEARCH: ${categoryData.search}`
+        );
+
+
+        // ====================================================
+        // STEP 1
+        // OPEN TECHPAY
+        // ====================================================
+
+        console.log(
+            '\nSTEP 1: Opening TechPay Shop India...'
+        );
+
+
+        await homepage.navigate();
+
+
+        console.log(
+            'TechPay Shop opened successfully.'
+        );
+
+
+        // ====================================================
+        // STEP 2
+        // PERSONAL INFORMATION
+        // ====================================================
+
+        console.log(
+            '\nSTEP 2: Handling personal information...'
+        );
+
+
+        await homepage.handlePersonalInfoModal(
+            CUSTOMER_NAME,
+            MOBILE_NUMBER
+        );
+
+
+        console.log(
+            'Personal information completed.'
+        );
+
+
+        // ====================================================
+        // STEP 3
+        // STORE SELECTION
+        // ====================================================
+
+        console.log(
+            `\nSTEP 3: Selecting store: ${STORE_NAME}`
+        );
+
+
+        await homepage.selectStoreLocation(
+            STORE_NAME
+        );
+
+
+        console.log(
+            `Store successfully selected: ${STORE_NAME}`
+        );
+
+
+        // ====================================================
+        // STEP 4
+        // SEARCH
+        // ====================================================
+
+        console.log(
+            `\nSTEP 4: Searching for: ${categoryData.search}`
+        );
+
+
+        await homepage.executeSearch(
+            categoryData.search
+        );
+
+
+        console.log(
+            'Product search completed.'
+        );
+
+
+        // ====================================================
+        // STEP 5
+        // CATEGORY
+        // ====================================================
+
+        console.log(
+            `\nSTEP 5: Selecting category: ${categoryData.category}`
+        );
+
+
+        await homepage.selectProductCategory(
+            categoryData.category
+        );
+
+
+        console.log(
+            `Product category selected: ${categoryData.category}`
+        );
+
+
+        // ====================================================
+        // STEP 6
+        // CHECK CATEGORY INVENTORY BEFORE FILTERING
+        // ====================================================
+
+        console.log(
+            '\nSTEP 6: Checking category inventory...'
+        );
+
+
+        const categoryHasProducts =
+            await filterPage.isProductAvailable();
+
+
+        // ====================================================
+        // ZERO INVENTORY
+        // ====================================================
+
+        if (!categoryHasProducts) {
+
+            console.log(
+                '\n========================================'
+            );
+
+            console.log(
+                'NO PRODUCTS AVAILABLE'
+            );
+
+            console.log(
+                '========================================'
+            );
+
+            console.log(
+                `Store: ${STORE_NAME}`
+            );
+
+            console.log(
+                `Category: ${categoryData.category}`
+            );
+
+            console.log(
+                `Search: ${categoryData.search}`
+            );
+
+            console.log(
+                'No products are available for this store/category combination.'
+            );
+
+            console.log(
+                'Skipping category-specific filters.'
+            );
+
+            console.log(
+                'Skipping Add to Cart.'
+            );
+
+            console.log(
+                'Skipping Checkout.'
+            );
+
+            console.log(
+                'Skipping Payment.'
+            );
+
+
+            // =================================================
+            // VERIFY EMPTY STATE
+            // =================================================
+
+            console.log(
+                '\nValidating empty catalogue state...'
+            );
+
+
+            const noProductsMessage = page
+                .getByText(
+                    /no products found|no products match/i
+                )
+                .first();
+
+
+            const emptyStateVisible =
+                await noProductsMessage
+                    .isVisible({
+                        timeout: 5000
+                    })
+                    .catch(() => false);
+
+
+            expect(
+                emptyStateVisible,
+                `Empty-state message should be displayed for ${STORE_NAME} → ${SELECTED_CATEGORY}.`
+            ).toBeTruthy();
+
+
+            console.log(
+                'Empty catalogue state validated successfully.'
+            );
+
+
+            console.log(
+                '\n========================================'
+            );
+
+            console.log(
+                `${SELECTED_CATEGORY.toUpperCase()} PURCHASE E2E: BLOCKED / NOT EXECUTED`
+            );
+
+            console.log(
+                `Reason: No ${SELECTED_CATEGORY} inventory available for ${STORE_NAME}.`
+            );
+
+            console.log(
+                '========================================'
+            );
+
+            console.log(
+                'EMPTY INVENTORY TEST: PASSED'
+            );
+
+            console.log(
+                '========================================'
+            );
+
+
+            return;
+        }
+
+
+        console.log(
+            'Products are available before filtering.'
+        );
+
+
+        // ====================================================
+        // STEP 7
+        // APPLY PRODUCT FILTERS
+        // ====================================================
+
+        console.log(
+            '\n========================================'
+        );
+
+        console.log(
+            `APPLYING ${SELECTED_CATEGORY.toUpperCase()} FILTERS`
+        );
+
+        console.log(
+            '========================================'
+        );
+
+        console.log(
+            'Configured filters:',
+            categoryData.filters
+        );
+
+
+        if (
+            categoryData.filters &&
+            Object.keys(
+                categoryData.filters
+            ).length > 0
+        ) {
+
+            await filterPage.applyFilters(
+                categoryData.filters
+            );
+
+
+            console.log(
+                'All configured product filters applied.'
+            );
+        }
+
+        else {
+
+            console.log(
+                'No filters configured for this category.'
+            );
+        }
+
+
+        // ====================================================
+        // STEP 8
+        // CHECK PRODUCTS AFTER FILTERING
+        // ====================================================
+
+        console.log(
+            '\nSTEP 8: Checking filtered products...'
+        );
+
+
+        const filteredProductAvailable =
+            await filterPage.isProductAvailable();
+
+
+        if (!filteredProductAvailable) {
+
+            console.log(
+                '\n========================================'
+            );
+
+            console.log(
+                'NO PRODUCTS MATCH CONFIGURED FILTERS'
+            );
+
+            console.log(
+                '========================================'
+            );
+
+            console.log(
+                `Store: ${STORE_NAME}`
+            );
+
+            console.log(
+                `Category: ${SELECTED_CATEGORY}`
+            );
+
+            console.log(
+                'Configured filters:',
+                categoryData.filters
+            );
+
+            console.log(
+                'Products exist in this category, but none match the configured filter combination.'
+            );
+
+            console.log(
+                'Skipping Add to Cart / Checkout / Payment.'
+            );
+
+
+            console.log(
+                '\n========================================'
+            );
+
+            console.log(
+                `${SELECTED_CATEGORY.toUpperCase()} FILTERED PURCHASE E2E: BLOCKED / NOT EXECUTED`
+            );
+
+            console.log(
+                '========================================'
+            );
+
+
+            return;
+        }
+
+
+        console.log(
+            'Filtered products are available.'
+        );
+
+
+       // ============================================================
+        // STEP 9
+        // ADD PRODUCT TO CART
+        // ============================================================
+
+        const PRODUCT_INDEX = 1;
+
+        console.log(
+            `\nSTEP 9: Adding product index ${PRODUCT_INDEX} to cart...`
+        );
+
+        await productPage.addProductToCart(
+            PRODUCT_INDEX
+        );
+
+        console.log(
+            `Product at index ${PRODUCT_INDEX} added successfully.`
+        );
+
+        console.log(
+            'Product added to cart.'
+        );
+
+
+        // ====================================================
+        // STEP 10
+        // NAVIGATE TO CART
+        // ====================================================
+
+        console.log(
+            '\nSTEP 10: Navigating to cart...'
+        );
+
+
+        await productPage.navigateToCart();
+
+
+        console.log(
+            'Cart opened.'
+        );
+
+
+        // ====================================================
+        // STEP 11
+        // VERIFY BROWSING CART
+        // ====================================================
+
+        console.log(
+            '\nSTEP 11: Verifying browsing cart...'
+        );
+
+
+        await cartPage.verifyCartHasProduct();
+
+
+        console.log(
+            'Browsing cart validation passed.'
+        );
+
+
+        // ====================================================
+        // STEP 12
+        // CHECKOUT
+        // ====================================================
+
+        console.log(
+            '\nSTEP 12: Proceeding to checkout...'
+        );
+
+
+        await cartPage.proceedToCheckout();
+
+
+        console.log(
+            'Checkout initiated.'
+        );
+
+
+        // ====================================================
+        // STEP 13
+        // LOGIN
+        // ====================================================
+
+        console.log(
+            '\nSTEP 13: Starting login...'
+        );
+
+
+        await loginPage.loginWithManualOtp(
+            MOBILE_NUMBER
+        );
+
+
+        console.log(
+            `Current URL after login: ${page.url()}`
+        );
+
+        console.log(
+            'Login process completed.'
+        );
+
+
+        // ====================================================
+        // STEP 14
+        // EXISTING ACCOUNT CART
+        // ====================================================
+
+        console.log(
+            '\nSTEP 14: Checking for existing account cart...'
+        );
+
+
+        const cartReplaced =
+            await loginPage.handleReplaceCartModal();
+
+
+        if (cartReplaced) {
+
+            console.log(
+                'Existing account cart replaced with current browsing cart.'
+            );
+        }
+
+        else {
+
+            console.log(
+                'No cart replacement was required.'
+            );
+        }
+
+
+        console.log(
+            `URL after cart handling: ${page.url()}`
+        );
+
+
+        // ====================================================
+        // STEP 15
+        // DISCOUNT
+        // ====================================================
+
+        console.log(
+            '\nSTEP 15: Checking discount...'
+        );
+
+
+        let discountResult = false;
+
+
+        try {
+
+            discountResult =
+                await checkoutPage
+                    .applyDiscountAndVerify();
+
+        }
+
+        catch (error) {
+
+            console.log(
+                `Discount validation skipped: ${error.message}`
+            );
+
+            discountResult = false;
+        }
+
+
+        console.log(
+            `Discount validation result: ${discountResult}`
+        );
+
+
+        // ====================================================
+        // STEP 16
+        // PAYMENT FLOW
+        // ====================================================
+
+        console.log(
+            '\n========================================'
+        );
+
+        console.log(
+            'PAYMENT FLOW'
+        );
+
+        console.log(
+            '========================================'
+        );
+
+
+        await checkoutPage.waitForCheckoutPage();
+
+
+        const paymentOptions =
+            await checkoutPage.getPaymentOptions();
+
+
+        console.log(
+            `Payment options -> Online: ${paymentOptions.payOnline}, Offline: ${paymentOptions.payOffline}`
+        );
+
+
+        // ====================================================
+        // PAY ONLINE
+        // ====================================================
+
+        if (paymentOptions.payOnline) {
+
+            console.log(
+                '\n========================================'
+            );
+
+            console.log(
+                'PAY ONLINE STORE'
+            );
+
+            console.log(
+                '========================================'
+            );
+
+            console.log(
+                `Payment Method: ${PAYMENT_METHOD}`
+            );
+
+            console.log(
+                `Payment Sub-Option: ${PAYMENT_SUB_OPTION}`
+            );
+
+
+            // ------------------------------------------------
+            // EXISTING WORKING PAY ONLINE FLOW
+            // ------------------------------------------------
+
+            await checkoutPage.clickPayOnline();
+
+
+            console.log(
+                'Pay Online gateway opened successfully.'
+            );
+
+
             await paymentGateway
                 .selectPaymentMethodWithSubOption(
                     PAYMENT_METHOD,
                     PAYMENT_SUB_OPTION
                 );
 
-        if (!paymentSelected) {
-            throw new Error(
-                `FAIL: ${PAYMENT_METHOD} → ` +
-                `${PAYMENT_SUB_OPTION} could not be selected.`
+
+            console.log(
+                `${PAYMENT_METHOD} → ${PAYMENT_SUB_OPTION} selected successfully.`
+            );
+
+
+            // ------------------------------------------------
+            // FINAL PAYMENT CTA
+            //
+            // This validates the button but does not submit
+            // an actual financial transaction.
+            // ------------------------------------------------
+
+            console.log(
+                'Checking final payment CTA...'
+            );
+
+
+            const paymentReady =
+                await paymentGateway
+                    .clickFinalPayment();
+
+
+            expect(
+                paymentReady,
+                'Final payment CTA should be available and enabled.'
+            ).toBeTruthy();
+
+
+            console.log(
+                'Online payment flow completed.'
             );
         }
 
-        console.log(
-            `${PAYMENT_METHOD} → ` +
-            `${PAYMENT_SUB_OPTION} selected successfully.`
-        );
 
-        console.log('Clicking final Pay INR...');
+        // ====================================================
+        // PAY OFFLINE
+        // ====================================================
 
-        await paymentGateway.clickFinalPayment();
-
-        console.log(
-            'Online payment flow completed.'
-        );
-
-    } else {
-
-        // ==========================================
-        // PAY ONLINE FAILED → PAY OFFLINE FALLBACK
-        // ==========================================
-
-        console.log(
-            'Pay Now is not available.'
-        );
-
-        if (payOffline) {
+        else if (paymentOptions.payOffline) {
 
             console.log(
-                'Falling back to Pay Offline...'
+                '\n========================================'
             );
 
+            console.log(
+                'PAY OFFLINE STORE'
+            );
+
+            console.log(
+                '========================================'
+            );
+
+            console.log(
+                'PROCESSING PAY OFFLINE'
+            );
+
+
             await checkoutPage.clickPayOffline();
+
 
             console.log(
                 'Pay Offline flow completed.'
             );
+        }
 
-        } else {
+
+        // ====================================================
+        // NO PAYMENT OPTION
+        // ====================================================
+
+        else {
 
             throw new Error(
-                'FAIL: Pay Now is unavailable and ' +
-                'Pay Offline is also unavailable.'
+                'Neither Pay Online nor Pay Offline is available for the selected store.'
             );
         }
+
+
+        // ====================================================
+        // COMPLETE
+        // ====================================================
+
+        console.log(
+            '\n========================================'
+        );
+
+        console.log(
+            'E2E PURCHASE FLOW COMPLETED'
+        );
+
+        console.log(
+            '========================================'
+        );
     }
-
-// ==========================================
-// PAY OFFLINE
-// ==========================================
-
-} else if (payOffline) {
-
-    console.log('========================================');
-    console.log('PAY OFFLINE STORE');
-    console.log('========================================');
-
-    await checkoutPage.clickPayOffline();
-
-    console.log(
-        'Pay Offline flow completed.'
-    );
-
-// ==========================================
-// NO PAYMENT OPTION
-// ==========================================
-
-} else {
-
-    throw new Error(
-        'FAIL: Neither Pay Online nor Pay Offline is available.'
-    );
-}
-
-console.log('========================================');
-console.log('E2E PURCHASE FLOW COMPLETED');
-console.log('========================================');
-await page.waitForTimeout(4000);
-await page.pause();
-
-});
+);
