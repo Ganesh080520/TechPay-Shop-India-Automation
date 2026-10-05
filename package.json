@@ -1,0 +1,25 @@
+{
+  "name": "techpay-automation",
+  "version": "1.0.0",
+  "description": "E2E Test Automation",
+  "main": "index.js",
+  "scripts": { 
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report"},
+  "keywords": [
+    "playwright",
+    "automation",
+    "e2e",
+    "testing",
+    "pom"
+  ],
+  "author": "QA Engineer",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.1.2"
+  }
+}
